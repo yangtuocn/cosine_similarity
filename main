@@ -1,0 +1,52 @@
+# This python program calculates the cosine similarity between items viewed by users.
+# User-viewing-item relations are saved in the data.csv file. Each line saves one 
+# user-item pair.
+
+# read input data to two dictionaries 
+with open('data.csv') as f:
+    user_item = dict()
+    item_user = dict()
+    for line in f:
+        user_id, item_id = line.rstrip('\n').split(',')
+        if item_id in item_user:
+            if user_id in item_user[item_id]:
+                item_user[item_id][user_id] +=1
+            else:
+                item_user[item_id][user_id] = 1
+        else:
+            item_user[item_id] = {user_id:1}
+            
+        if user_id in user_item:
+            if item_id in user_item[user_id]:
+                user_item[user_id][item_id] +=1
+            else:
+                user_item[user_id][item_id] = 1
+        else:
+            user_item[user_id] = {item_id:1}
+
+for item in item_user:
+    length = 0
+    for user in item_user[item]:
+        length += item_user[item][user] ** 2
+    item_user[item]['length'] = length ** 0.5
+
+similarity_dict = {}
+while user_item:
+    user = user_item.popitem()[1]
+    item_A = user.popitem()
+    for item_B in user:
+        if (item_A[0], item_B) in similarity_dict:
+            similarity_dict[(item_A[0], item_B)] += item_A[1] * user[item_B]
+        else:
+            similarity_dict[(item_A[0], item_B)] = item_A[1] * user[item_B]
+
+for item in similarity_dict:
+    similarity_dict[item] /= (item_user[item[0]]['length'] * item_user[item[1]]['length'])
+
+# open file for writing result
+f_save = open("result_yc.txt","w")
+# write the first line per request
+f_save.write('(item_id1, item_id2)\t{cosine similarity}\n')
+for item in similarity_dict:
+    f_save.write('{}\t{}\n'.format(item, similarity_dict[item]))
+f_save.close()
