@@ -2,37 +2,45 @@
 # User-viewing-item relations are saved in the data.csv file. Each line saves one 
 # user-item pair.
 
-# read input data to two dictionaries 
+# read input data to two dictionaries
+# user_dict uses user_id as the primary key, and saves all the items viewed by this user
+# user_dict[user_id][item_id] stores the number of interactions between user_id and item_id
+# item_dict uses item_id as the primary key, and saves all the users viewed this item
+# item_dict[item_id][user_id] stores the number of interactions between user_id and item_id
 with open('data.csv') as f:
-    user_item = dict()
-    item_user = dict()
+    user_dict = dict()
+    item_dict = dict()
     for line in f:
         user_id, item_id = line.rstrip('\n').split(',')
-        if item_id in item_user:
-            if user_id in item_user[item_id]:
-                item_user[item_id][user_id] +=1
+        
+        if item_id in item_dict:
+            if user_id in item_dict[item_id]:
+                item_dict[item_id][user_id] +=1
             else:
-                item_user[item_id][user_id] = 1
+                item_dict[item_id][user_id] = 1
         else:
-            item_user[item_id] = {user_id:1}
+            item_dict[item_id] = {user_id:1}
             
-        if user_id in user_item:
-            if item_id in user_item[user_id]:
-                user_item[user_id][item_id] +=1
+        if user_id in user_dict:
+            if item_id in user_dict[user_id]:
+                user_dict[user_id][item_id] +=1
             else:
-                user_item[user_id][item_id] = 1
+                user_dict[user_id][item_id] = 1
         else:
-            user_item[user_id] = {item_id:1}
+            user_dict[user_id] = {item_id:1}
 
-for item in item_user:
+# for each item_dict element, calculate its length
+for item in item_dict:
     length = 0
-    for user in item_user[item]:
-        length += item_user[item][user] ** 2
-    item_user[item]['length'] = length ** 0.5
+    for user in item_dict[item]:
+        length += item_dict[item][user] ** 2
+    item_dict[item]['length'] = length ** 0.5
 
 similarity_dict = {}
-while user_item:
-    user = user_item.popitem()[1]
+# go through each element in user_dict, calculate the products between any item pairs 
+# (here item_A and item_B) viewed by the same user, and sum up
+while user_dict:
+    user = user_dict.popitem()[1]
     item_A = user.popitem()
     for item_B in user:
         if (item_A[0], item_B) in similarity_dict:
@@ -40,13 +48,10 @@ while user_item:
         else:
             similarity_dict[(item_A[0], item_B)] = item_A[1] * user[item_B]
 
+# calculate the cosine similarity of each item pair stored in similarity_dict
 for item in similarity_dict:
-    similarity_dict[item] /= (item_user[item[0]]['length'] * item_user[item[1]]['length'])
+    similarity_dict[item] /= (item_dict[item[0]]['length'] * item_dict[item[1]]['length'])
 
-# open file for writing result
-f_save = open("result_yc.txt","w")
-# write the first line per request
-f_save.write('(item_id1, item_id2)\t{cosine similarity}\n')
-for item in similarity_dict:
-    f_save.write('{}\t{}\n'.format(item, similarity_dict[item]))
-f_save.close()
+with open('result.csv','wt') as save_file:
+    for item in similarity_dict:
+        save_file.write('{},{}\n'.format(item, similarity_dict[item]))
